@@ -1,59 +1,48 @@
 const Hotel = require('../../models/Hotel');
 const Reservation = require('../../models/Reservation');
 
-const getTarget = async (hotelIds, arrDate, depDate) => {
-  const x = hotelIds.map(async (hotelId) => {
-    //array of reservations
-    const gimmeBackRes = await Reservation.find()
-      .where('hotel')
-      .equals(hotelId)
-      .where('arrival_date')
-      .gte(new Date(arrDate))
-      .where('departure_date')
-      .lte(new Date(depDate))
-      .sort({ arrival_date: 'asc' })
-      .exec();
+const getTestDates = (arrDate, depDate) => {
+  const difference = Math.abs(new Date(arrDate) - new Date(depDate));
+  const days = difference / (1000 * 3600 * 24);
+  const testDates = [];
+  for (let i = 0; i <= days; i++) {
+    testDates.push(addDays(new Date(arrDate), i));
+  }
+  return testDates;
+};
 
-    if (gimmeBackRes.length) {
-      const result = {
-        hotelId: gimmeBackRes[0].hotel._id,
-        reservationId: gimmeBackRes.map((res) => res.id),
-      };
-      return result;
-    } else {
-      return 0;
+const addDays = (date, days) => {
+  var result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+};
+
+const checkReservationsForRooms = (arr, dep, numOfRooms) => {
+  let x = [];
+  // issue when hotel has multiple reservations... on one could work on other couldn't
+  if (arr.length) {
+    for (let i = 0; i < arr.length; i++) {
+      // console.log('hotel: ' + arr[i].hotel.city);
+      // console.log('want to book: ' + numOfRooms);
+      // console.log('already booked: ' + arr[i].num_of_rooms);
+      // console.log('hotel: ' + arr[i].hotel.num_of_rooms);
+      if (numOfRooms + arr[i].num_of_rooms > arr[i].hotel.num_of_rooms) {
+        x.push(arr[i].hotel);
+      }
     }
-  });
-  return Promise.all(x);
-};
-
-const getUnwantedIds = async (targetHotelsWithReservations, numOfRooms) => {
-  const x = targetHotelsWithReservations.map(async (res) => {
-    let hotel = await Hotel.findById(res.hotelId);
-    if (hotel) {
-      const unwantedIds = res.reservationId.map(async (resId) => {
-        const reservation = await Reservation.findById(resId);
-        if (reservation.num_of_rooms + numOfRooms > hotel.num_of_rooms) {
-          return hotel.id;
-        } else {
-          return 0;
-        }
-      });
-      return Promise.all(unwantedIds);
+  }
+  if (dep.length) {
+    for (let i = 0; i < dep.length; i++) {
+      // console.log('hotel: ' + dep[i].hotel.city);
+      // console.log('want to book: ' + numOfRooms);
+      // console.log('already booked: ' + dep[i].num_of_rooms);
+      // console.log('hotel: ' + dep[i].hotel.num_of_rooms);
+      if (numOfRooms + dep[i].num_of_rooms > dep[i].hotel.num_of_rooms) {
+        x.push(dep[i].hotel);
+      }
     }
-  });
-  return Promise.all(x);
-};
-
-const cleanUnWantedHotelIds = (unwantedHotelIds) => {
-  const x = unwantedHotelIds.filter((el) => Array.isArray(el));
-  return clean(x);
-};
-
-const clean = (cleanUnWantedHotelIds) => {
-  return cleanUnWantedHotelIds.map((item) => {
-    return item.filter((el) => el !== 0);
-  });
+  }
+  return x;
 };
 
 module.exports = {
@@ -62,36 +51,37 @@ module.exports = {
       try {
         if (filter && Object.keys(filter).length === 4) {
           const { arrDate, depDate, numOfRooms, price } = filter;
-          // ⚠️ arrDate, depDate = string
+          //we want to check these days for the room availability
+          const testDates = getTestDates(arrDate, depDate);
+          console.log(testDates);
 
-          // gimme all hotels
-          const hotels = await Hotel.find().sort({
-            price: 'asc',
-          });
-          // now gimme all of hotels ids
-          const hotelIds = hotels.map((hotel) => {
-            return hotel.id;
-          });
+          const filterHotelsArrival = [];
+          for (let i = 0; i < testDates.length; i++) {
+            let x = await Reservation.find({ arrival_date: testDates[i] });
+            if (x.length) {
+              x.forEach((el) => {
+                filterHotelsArrival.push(el);
+              });
+            }
+          }
+          const filterHotelsDeparture = [];
+          for (let i = 0; i < testDates.length; i++) {
+            let x = await Reservation.find({ departure_date: testDates[i] });
+            if (x.length) {
+              x.forEach((el) => {
+                filterHotelsDeparture.push(el);
+              });
+            }
+          }
 
-          // get ids of hotels and their reservations that are in collision with the requested dates
-          const targetHotelsWithReservations = await getTarget(
-            hotelIds,
-            arrDate,
-            depDate,
-            numOfRooms,
-            price
-          );
-          // console.log(targetHotelsWithReservations);
-          const unwantedHotelIdsWithStuff = await getUnwantedIds(
-            targetHotelsWithReservations,
+          const unwantedHotels = checkReservationsForRooms(
+            filterHotelsArrival,
+            filterHotelsDeparture,
             numOfRooms
           );
+          console.log(unwantedHotels);
 
-          const unwantedHotelIds = cleanUnWantedHotelIds(
-            unwantedHotelIdsWithStuff
-          );
-
-          const filteredHotels = await Hotel.find()
+          const hotels = await Hotel.find()
             .where('num_of_rooms')
             .gte(numOfRooms)
             .where('price')
@@ -100,109 +90,31 @@ module.exports = {
               price: 'asc',
             });
 
-          const ids = [];
-          for (let i = 0; i < unwantedHotelIds.length; i++) {
-            const id = unwantedHotelIds[i];
-            for (let j = 0; j < filteredHotels.length; j++) {
-              const hotel = filteredHotels[j];
-              // console.log(`hotel id: ${hotel._id}| ${id}`);
-              if (hotel._id == id[0]) {
-                ids.push(hotel.id);
+          if (hotels.length) {
+            if (unwantedHotels.length) {
+              for (let i = 0; i < unwantedHotels.length; i++) {
+                const hotelNames = hotels.map((hotel) => hotel.city);
+                console.log(hotelNames);
+                let unwantedHotel = unwantedHotels[i];
+                //find index of unwantedHotel name in hotels
+                console.log(hotelNames.indexOf(unwantedHotel.city));
+                let place = hotelNames.indexOf(unwantedHotel.city);
+                if (place >= 0) {
+                  hotels.splice(place, 1);
+                }
               }
             }
+            return hotels;
+          } else {
+            return [];
           }
 
-          if (!ids.length) {
-            return filteredHotels;
-          } else {
-            // console.log(ids);
-            // console.log(filteredHotels);
-            const q = [];
-            filteredHotels.forEach((hotel, i) => {
-              ids.forEach((id) => {
-                if (hotel.id == id) {
-                  q.push(i);
-                }
-              });
-            });
-            q.reverse().forEach((index) => {
-              filteredHotels.splice(index, 1);
-            });
-            return filteredHotels;
-          }
-          // 🔚 we want to get the ids of hotels that should not be displayed
+          // const x = [];
         } else if (filter && Object.keys(filter).length === 3) {
-          const { arrDate, depDate, numOfRooms } = filter;
-          // gimme all hotels
-          const hotels = await Hotel.find().sort({
-            price: 'asc',
-          });
-          // now gimme all of hotels ids
-          const hotelIds = hotels.map((hotel) => {
-            return hotel.id;
-          });
-
-          // get ids of hotels and their reservations that are in collision with the requested dates
-          const targetHotelsWithReservations = await getTarget(
-            hotelIds,
-            arrDate,
-            depDate,
-            numOfRooms
-          );
-          // console.log(targetHotelsWithReservations);
-          const unwantedHotelIdsWithStuff = await getUnwantedIds(
-            targetHotelsWithReservations,
-            numOfRooms
-          );
-
-          const unwantedHotelIds = cleanUnWantedHotelIds(
-            unwantedHotelIdsWithStuff
-          );
-
-          const filteredHotels = await Hotel.find()
-            .where('num_of_rooms')
-            .gte(numOfRooms)
-            .sort({
-              price: 'asc',
-            });
-
-          const ids = [];
-          for (let i = 0; i < unwantedHotelIds.length; i++) {
-            const id = unwantedHotelIds[i];
-            for (let j = 0; j < filteredHotels.length; j++) {
-              const hotel = filteredHotels[j];
-              // console.log(`hotel id: ${hotel._id}| ${id}`);
-              if (hotel._id == id[0]) {
-                ids.push(hotel.id);
-              }
-            }
-          }
-
-          if (!ids.length) {
-            return filteredHotels;
-          } else {
-            // console.log(ids);
-            // console.log(filteredHotels);
-            const q = [];
-            filteredHotels.forEach((hotel, i) => {
-              ids.forEach((id) => {
-                if (hotel.id == id) {
-                  q.push(i);
-                }
-              });
-            });
-            q.reverse().forEach((index) => {
-              filteredHotels.splice(index, 1);
-            });
-            return filteredHotels;
-          }
-        } else {
-          return await Hotel.find().sort({
-            price: 'asc',
-          });
+          // remove where('price') from hotels
         }
-      } catch (error) {
-        throw new Error(error);
+      } catch (err) {
+        throw new Error(err);
       }
     },
     async everyThing() {
