@@ -53,7 +53,6 @@ module.exports = {
           const { arrDate, depDate, numOfRooms, price } = filter;
           //we want to check these days for the room availability
           const testDates = getTestDates(arrDate, depDate);
-          console.log(testDates);
 
           const filterHotelsArrival = [];
           for (let i = 0; i < testDates.length; i++) {
@@ -79,7 +78,6 @@ module.exports = {
             filterHotelsDeparture,
             numOfRooms
           );
-          console.log(unwantedHotels);
 
           const hotels = await Hotel.find()
             .where('num_of_rooms')
@@ -94,10 +92,8 @@ module.exports = {
             if (unwantedHotels.length) {
               for (let i = 0; i < unwantedHotels.length; i++) {
                 const hotelNames = hotels.map((hotel) => hotel.city);
-                console.log(hotelNames);
                 let unwantedHotel = unwantedHotels[i];
                 //find index of unwantedHotel name in hotels
-                console.log(hotelNames.indexOf(unwantedHotel.city));
                 let place = hotelNames.indexOf(unwantedHotel.city);
                 if (place >= 0) {
                   hotels.splice(place, 1);
@@ -112,6 +108,58 @@ module.exports = {
           // const x = [];
         } else if (filter && Object.keys(filter).length === 3) {
           // remove where('price') from hotels
+          const { arrDate, depDate, numOfRooms } = filter;
+          //we want to check these days for the room availability
+          const testDates = getTestDates(arrDate, depDate);
+
+          const filterHotelsArrival = [];
+          for (let i = 0; i < testDates.length; i++) {
+            let x = await Reservation.find({ arrival_date: testDates[i] });
+            if (x.length) {
+              x.forEach((el) => {
+                filterHotelsArrival.push(el);
+              });
+            }
+          }
+          const filterHotelsDeparture = [];
+          for (let i = 0; i < testDates.length; i++) {
+            let x = await Reservation.find({ departure_date: testDates[i] });
+            if (x.length) {
+              x.forEach((el) => {
+                filterHotelsDeparture.push(el);
+              });
+            }
+          }
+
+          const unwantedHotels = checkReservationsForRooms(
+            filterHotelsArrival,
+            filterHotelsDeparture,
+            numOfRooms
+          );
+
+          const hotels = await Hotel.find()
+            .where('num_of_rooms')
+            .gte(numOfRooms)
+            .sort({
+              price: 'asc',
+            });
+
+          if (hotels.length) {
+            if (unwantedHotels.length) {
+              for (let i = 0; i < unwantedHotels.length; i++) {
+                const hotelNames = hotels.map((hotel) => hotel.city);
+                let unwantedHotel = unwantedHotels[i];
+                //find index of unwantedHotel name in hotels
+                let place = hotelNames.indexOf(unwantedHotel.city);
+                if (place >= 0) {
+                  hotels.splice(place, 1);
+                }
+              }
+            }
+            return hotels;
+          } else {
+            return [];
+          }
         }
       } catch (err) {
         throw new Error(err);

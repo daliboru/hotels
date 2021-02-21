@@ -57,9 +57,7 @@ module.exports = {
         departure_date,
         num_of_rooms,
       });
-
-      const reservation = await newReservation.save();
-      return reservation;
+      return await newReservation.save();
     },
   },
 };
