@@ -1,0 +1,97 @@
+.App {
+  text-align: center;
+}
+
+.card {
+  margin: 2rem;
+  height: 100%;
+  padding: 3rem;
+  text-align: left;
+  border-radius: 26px;
+  background: #e8e8e4;
+  box-shadow: rgba(0, 0, 0, 0.1) 0px 1px 3px 0px,
+    rgba(0, 0, 0, 0.06) 0px 1px 2px 0px;
+  &-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.strong {
+  color: #264653;
+}
+
+.card-container {
+  margin-left: -8px;
+  margin-right: -8px;
+}
+
+.hotel-form {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  &-item {
+    margin: 0 1rem;
+    input {
+      width: 8rem;
+    }
+  }
+  input {
+    margin-bottom: 0;
+  }
+}
+
+.header {
+  margin: 3rem 0;
+  color: #264653;
+}
+
+.reservation {
+  box-shadow: rgba(0, 0, 0, 0.1) -4px 9px 25px -6px;
+  padding: 2rem;
+  border-radius: 5%;
+  font-weight: 600;
+  color: white;
+  padding-left: 3rem;
+  text-align: left;
+  background-color: #ff8360;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40rem;
+  z-index: 100;
+  button {
+    color: white;
+  }
+
+  &-form-item {
+    display: flex;
+    // margin: 1rem 0;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    input {
+      color: #264653;
+      margin: 0;
+    }
+  }
+  button {
+    margin-top: 1rem;
+    float: right;
+  }
+
+  &-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+}
+
+.error {
+  color: #264653;
+  display: flex;
+  width: 100%;
+}
