@@ -9,9 +9,9 @@ import Hotels from './components/Hotels';
 
 function App() {
   const [values, setValues] = useState({
-    arrDate: '',
-    depDate: '',
-    numOfRooms: '',
+    arrDate: new Date().toISOString().substr(0, 10),
+    depDate: new Date().toISOString().substr(0, 10),
+    numOfRooms: 1,
     price: '',
     city: '',
   });
@@ -23,7 +23,6 @@ function App() {
     price: '',
     city: '',
   });
-
   const options = [
     { value: 'Bechej, Serbia', label: 'Bechej, Serbia' },
     { value: 'Lund, Sweden', label: 'Lund, Sweden' },
